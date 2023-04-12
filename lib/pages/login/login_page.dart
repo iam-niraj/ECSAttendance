@@ -1,26 +1,24 @@
+import 'package:ecs_attendance/database/database.dart';
+import 'package:ecs_attendance/models/login.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:snippet_coder_utils/FormHelper.dart';
 import 'package:snippet_coder_utils/ProgressHUD.dart';
 import 'package:snippet_coder_utils/hex_color.dart';
 
-import '../config.dart';
-import '../models/register_request_model.dart';
-import '../services/api_service.dart';
-
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({Key? key}) : super(key: key);
+class LoginPage extends StatefulWidget {
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
-  _RegisterPageState createState() => _RegisterPageState();
+  _LoginPageState createState() => _LoginPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _LoginPageState extends State<LoginPage> {
   bool isApiCallProcess = false;
   bool hidePassword = true;
-  static final GlobalKey<FormState> globalFormKey = GlobalKey<FormState>();
+  GlobalKey<FormState> globalFormKey = GlobalKey<FormState>();
   String? userName;
   String? password;
-  String? email;
 
   @override
   void initState() {
@@ -31,21 +29,21 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        backgroundColor: HexColor("#283B71"),
+        backgroundColor: const Color(0xFF125252),
         body: ProgressHUD(
-          child: Form(
-            key: globalFormKey,
-            child: _registerUI(context),
-          ),
           inAsyncCall: isApiCallProcess,
           opacity: 0.3,
           key: UniqueKey(),
+          child: Form(
+            key: globalFormKey,
+            child: _loginUI(context),
+          ),
         ),
       ),
     );
   }
 
-  Widget _registerUI(BuildContext context) {
+  Widget _loginUI(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -53,7 +51,7 @@ class _RegisterPageState extends State<RegisterPage> {
         children: <Widget>[
           Container(
             width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height / 5.2,
+            height: MediaQuery.of(context).size.height / 5.0,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -64,6 +62,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 ],
               ),
               borderRadius: BorderRadius.only(
+                //topLeft: Radius.circular(100),
+                //topRight: Radius.circular(150),
                 bottomRight: Radius.circular(100),
                 bottomLeft: Radius.circular(100),
               ),
@@ -74,9 +74,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 Align(
                   alignment: Alignment.center,
                   child: Image.asset(
-                    "assets/images/splash.png",
+                    "assets/images/logo.png",
                     fit: BoxFit.contain,
-                    width: 100,
+                    width: 150,
                   ),
                 ),
               ],
@@ -85,7 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
           const Padding(
             padding: EdgeInsets.only(left: 20, bottom: 30, top: 50),
             child: Text(
-              "Register",
+              "Login",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 25,
@@ -109,9 +109,9 @@ class _RegisterPageState extends State<RegisterPage> {
               (onSavedVal) => {
                 userName = onSavedVal,
               },
-              initialValue: "",
               showPrefixIcon: true,
               prefixIcon: const Icon(Icons.person),
+              initialValue: "",
               obscureText: false,
               borderFocusColor: Colors.white,
               prefixIconColor: Colors.white,
@@ -160,31 +160,27 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: FormHelper.inputFieldWidget(
-              context,
-              "Email",
-              "Email",
-              (onValidateVal) {
-                if (onValidateVal.isEmpty) {
-                  return 'Email can\'t be empty.';
-                }
-
-                return null;
-              },
-              (onSavedVal) => {
-                email = onSavedVal,
-              },
-              initialValue: "",
-              showPrefixIcon: true,
-              prefixIcon: const Icon(Icons.email),
-              borderFocusColor: Colors.white,
-              prefixIconColor: Colors.white,
-              borderColor: Colors.white,
-              textColor: Colors.white,
-              hintColor: Colors.white.withOpacity(0.7),
-              borderRadius: 10,
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                right: 25,
+              ),
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.grey, fontSize: 14.0),
+                  children: <TextSpan>[
+                    TextSpan(
+                      text: 'Forget Password ?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: TapGestureRecognizer()..onTap = () {},
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(
@@ -192,44 +188,31 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           Center(
             child: FormHelper.submitButton(
-              "Register",
+              "Login",
               () {
                 if (validateAndSave()) {
                   setState(() {
                     isApiCallProcess = true;
                   });
+                 final login = Login(name: userName!, pass: password!);
 
-                  RegisterRequestModel model = RegisterRequestModel(
-                    username: userName,
-                    password: password,
-                    email: email,
-                  );
-
-                  APIService.register(model).then(
+                  MongoDatabase.login(login).then(
                     (response) {
                       setState(() {
                         isApiCallProcess = false;
                       });
 
-                      if (response.data != null) {
-                        FormHelper.showSimpleAlertDialog(
+                      if (response) {
+                        Navigator.pushNamedAndRemoveUntil(
                           context,
-                          Config.appName,
-                          "Registration Successful. Please login to the account",
-                          "OK",
-                          () {
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              '/',
-                              (route) => false,
-                            );
-                          },
+                          '/home',
+                          (route) => false,
                         );
                       } else {
                         FormHelper.showSimpleAlertDialog(
                           context,
-                          Config.appName,
-                          response.message,
+                          "ECS Academy",
+                          "Invalid Username/Password !!",
                           "OK",
                           () {
                             Navigator.of(context).pop();
@@ -240,10 +223,58 @@ class _RegisterPageState extends State<RegisterPage> {
                   );
                 }
               },
-              btnColor: HexColor("283B71"),
+              btnColor: const Color(0xFF125252),
               borderColor: Colors.white,
               txtColor: Colors.white,
               borderRadius: 10,
+            ),
+          ),
+          const SizedBox(
+            height: 20,
+          ),
+          const Center(
+            child: Text(
+              "OR",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(
+            height: 20,
+          ),
+          Align(
+            alignment: Alignment.center,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                right: 25,
+              ),
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.white, fontSize: 14.0),
+                  children: <TextSpan>[
+                    const TextSpan(
+                      text: 'Dont have an account? ',
+                    ),
+                    TextSpan(
+                      text: 'Sign up',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          Navigator.pushNamed(
+                            context,
+                            '/register',
+                          );
+                        },
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(

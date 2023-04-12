@@ -1,28 +1,26 @@
-import 'package:ecs_attendance/models/login.dart';
+import 'package:ecs_attendance/database/database.dart';
+import 'package:ecs_attendance/models/register.dart';
 import 'package:ecs_attendance/models/student.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:snippet_coder_utils/FormHelper.dart';
 import 'package:snippet_coder_utils/ProgressHUD.dart';
 import 'package:snippet_coder_utils/hex_color.dart';
+import 'package:mongo_dart/mongo_dart.dart' as M;
 
-import '../services/api_service.dart';
-import '../config.dart';
-import '../models/login_request_model.dart';
-
-class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({Key? key}) : super(key: key);
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  _RegisterPageState createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   bool isApiCallProcess = false;
   bool hidePassword = true;
-  GlobalKey<FormState> globalFormKey = GlobalKey<FormState>();
+  static final GlobalKey<FormState> globalFormKey = GlobalKey<FormState>();
   String? userName;
   String? password;
+  String? email;
 
   @override
   void initState() {
@@ -33,21 +31,21 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        backgroundColor: HexColor("#283B71"),
+        backgroundColor: const Color(0xFF125252),
         body: ProgressHUD(
           inAsyncCall: isApiCallProcess,
           opacity: 0.3,
           key: UniqueKey(),
           child: Form(
             key: globalFormKey,
-            child: _loginUI(context),
+            child: _registerUI(context),
           ),
         ),
       ),
     );
   }
 
-  Widget _loginUI(BuildContext context) {
+  Widget _registerUI(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -55,7 +53,7 @@ class _LoginPageState extends State<LoginPage> {
         children: <Widget>[
           Container(
             width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height / 5.2,
+            height: MediaQuery.of(context).size.height / 5.0,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -66,11 +64,9 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
               borderRadius: BorderRadius.only(
-                //topLeft: Radius.circular(100),
-                //topRight: Radius.circular(150),
-                bottomRight: Radius.circular(100),
+                 bottomRight: Radius.circular(100),
                 bottomLeft: Radius.circular(100),
-              ),
+               ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -78,9 +74,9 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.center,
                   child: Image.asset(
-                    "assets/images/splash.png",
+                    "assets/images/logo.png",
                     fit: BoxFit.contain,
-                    width: 161,
+                    width: 150,
                   ),
                 ),
               ],
@@ -89,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
           const Padding(
             padding: EdgeInsets.only(left: 20, bottom: 30, top: 50),
             child: Text(
-              "Login",
+              "Register",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 25,
@@ -113,9 +109,9 @@ class _LoginPageState extends State<LoginPage> {
               (onSavedVal) => {
                 userName = onSavedVal,
               },
+              initialValue: "",
               showPrefixIcon: true,
               prefixIcon: const Icon(Icons.person),
-              initialValue: "",
               obscureText: false,
               borderFocusColor: Colors.white,
               prefixIconColor: Colors.white,
@@ -143,7 +139,7 @@ class _LoginPageState extends State<LoginPage> {
               },
               initialValue: "",
               showPrefixIcon: true,
-              prefixIcon: Icon(Icons.person),
+              prefixIcon: const Icon(Icons.person),
               obscureText: hidePassword,
               borderFocusColor: Colors.white,
               prefixIconColor: Colors.white,
@@ -164,27 +160,31 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                right: 25,
-              ),
-              child: RichText(
-                text: TextSpan(
-                  style: const TextStyle(color: Colors.grey, fontSize: 14.0),
-                  children: <TextSpan>[
-                    TextSpan(
-                      text: 'Forget Password ?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        decoration: TextDecoration.underline,
-                      ),
-                      recognizer: TapGestureRecognizer()..onTap = () {},
-                    ),
-                  ],
-                ),
-              ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FormHelper.inputFieldWidget(
+              context,
+              "Email",
+              "Email",
+              (onValidateVal) {
+                if (onValidateVal.isEmpty) {
+                  return 'Email can\'t be empty.';
+                }
+
+                return null;
+              },
+              (onSavedVal) => {
+                email = onSavedVal,
+              },
+              initialValue: "",
+              showPrefixIcon: true,
+              prefixIcon: const Icon(Icons.email),
+              borderFocusColor: Colors.white,
+              prefixIconColor: Colors.white,
+              borderColor: Colors.white,
+              textColor: Colors.white,
+              hintColor: Colors.white.withOpacity(0.7),
+              borderRadius: 10,
             ),
           ),
           const SizedBox(
@@ -192,36 +192,44 @@ class _LoginPageState extends State<LoginPage> {
           ),
           Center(
             child: FormHelper.submitButton(
-              "Login",
+              "Register",
               () {
                 if (validateAndSave()) {
                   setState(() {
                     isApiCallProcess = true;
                   });
 
-                  /* LoginRequestModel model = LoginRequestModel(
-                    username: userName,
-                    password: password,
-                  ); */
-                 final login = Login(name: userName!, pass: password!);
+                  Register model = Register(
+                    name: userName!,
+                    pass: password!,
+                    id: M.ObjectId(),
+                  );
 
-                  APIService.login(model).then(
+                  MongoDatabase.register(model).then(
                     (response) {
                       setState(() {
                         isApiCallProcess = false;
                       });
 
                       if (response) {
-                        Navigator.pushNamedAndRemoveUntil(
+                        FormHelper.showSimpleAlertDialog(
                           context,
-                          '/home',
-                          (route) => false,
+                          "ECSAcademy",
+                          "Registration Successful. Please login to the account",
+                          "OK",
+                          () {
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/',
+                              (route) => false,
+                            );
+                          },
                         );
                       } else {
                         FormHelper.showSimpleAlertDialog(
                           context,
-                          "ECS Academy",
-                          "Invalid Username/Password !!",
+                          "ECSAcademy",
+                          "Username already exists!",
                           "OK",
                           () {
                             Navigator.of(context).pop();
@@ -232,58 +240,10 @@ class _LoginPageState extends State<LoginPage> {
                   );
                 }
               },
-              btnColor: HexColor("283B71"),
+              btnColor: const Color(0xFF125252),
               borderColor: Colors.white,
               txtColor: Colors.white,
               borderRadius: 10,
-            ),
-          ),
-          const SizedBox(
-            height: 20,
-          ),
-          const Center(
-            child: Text(
-              "OR",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(
-            height: 20,
-          ),
-          Align(
-            alignment: Alignment.center,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                right: 25,
-              ),
-              child: RichText(
-                text: TextSpan(
-                  style: const TextStyle(color: Colors.white, fontSize: 14.0),
-                  children: <TextSpan>[
-                    const TextSpan(
-                      text: 'Dont have an account? ',
-                    ),
-                    TextSpan(
-                      text: 'Sign up',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          Navigator.pushNamed(
-                            context,
-                            '/register',
-                          );
-                        },
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
           const SizedBox(

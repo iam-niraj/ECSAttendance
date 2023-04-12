@@ -1,47 +1,41 @@
 import 'package:ecs_attendance/database/database.dart';
-import 'package:ecs_attendance/pages/home_page.dart';
-import 'package:ecs_attendance/pages/qr_page.dart';
-import 'package:ecs_attendance/pages/qrscane.dart';
+import 'package:ecs_attendance/pages/home/home_page.dart';
+import 'package:ecs_attendance/pages/login/login_page.dart';
+import 'package:ecs_attendance/pages/register/register_page.dart';
+import 'package:ecs_attendance/utils/service.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
+
+Widget _defaultHome = const LoginPage();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MongoDatabase.connect();
 
-/*   bool _result = await SharedService.isLoggedIn();
+  bool _result = await SharedService.isLoggedIn();
   if (_result) {
     _defaultHome = const HomePage();
-  } */
-  _getCameraPermission();
+  }
   runApp(MyApp());
 }
 
-Future<PermissionStatus> _getCameraPermission() async {
-  var status = await Permission.camera.status;
-  if (!status.isGranted) {
-    final result = await Permission.camera.request();
-    return result;
-  } else {
-    return status;
-  }
-}
-
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
+  // ignore: avoid_renaming_method_parameters
   Widget build(BuildContext buildContext) {
     return MaterialApp(
       title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       routes: {
-        "/qrscan": (context) => ScanScreen(),
-        "/qrpage": (context) => QRPage(),
+        "/login": (context) => const LoginPage(),
+        "/register": (context) => const RegisterPage(),
         "/home": (context) => const HomePage(),
-        "/": (context) => const HomePage(),
+        "/": (context) => _defaultHome,
       },
-      // ),
     );
   }
 }
